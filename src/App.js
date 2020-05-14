@@ -37,6 +37,7 @@ function App() {
   const [meals,setMeals] = useState([])
 
   const [meal,changeMeal] = useState('');
+  const [meal_type,setMealType] = useState('lunch');
 
   useEffect(()=>{
 
@@ -49,7 +50,7 @@ function App() {
       setMeals(data);
     });
 
-    const key = `${uid}${formatDate(getMonday())}`;
+    const key = `${uid}${formatDate(getMonday("2020-07-03"))}`;
 
    
     let doc = db.collection("menus").doc(key).get().then(doc=>{
@@ -62,23 +63,29 @@ function App() {
 
         let newmenu = {
           date:new Date(),
-          monday:[],
-          tuesday:[],
-          wednesday:[],
-          thursday:[],
-          friday:[],
-          saturday:[],
-          sunday:[],
+          meals:[],
+          lunch:[],
+          dinner:[],
+          monday:{},
+          tuesday:{},
+          wednesday:{},
+          thursday:{},
+          friday:{},
+          saturday:{},
+          sunday:{},
         };
         db.collection("menus").doc(key).set(newmenu);
+
+
         setCurrentMenu(newmenu);
       }
     });
   },[])
 
 
-  const toggleadd = (value)=> {
+  const toggleadd = (value,meal_type)=> {
     changeMeal('');
+    setMealType(meal_type);
     toggleAdding(value == undefined  ? !isAdding : value);
 
   }
@@ -86,13 +93,28 @@ function App() {
   
   const addToDay = (e,day,dish) => {
     e.preventDefault();
-    currentMenu[week[day].key].push(dish);
+
+    if (currentMenu[week[day].key][meal_type] == undefined) currentMenu[week[day].key][meal_type] = [];
+    currentMenu[week[day].key][meal_type].push(dish);
     toggleadd(false);  
 
     let themenu = db.collection("menus").doc(currentMenu.id);
     themenu.update({
-        [week[day].key]: firebase.firestore.FieldValue.arrayUnion(dish)
+        [week[day].key+'.'+meal_type]: firebase.firestore.FieldValue.arrayUnion(dish)
     });
+  }
+
+  const removeMeal = (day,meal_type,meal) => {
+    console.log(day,meal);
+    currentMenu[day][meal_type] = currentMenu[day][meal_type].filter(m=>m.id != meal.id);
+
+    let themenu = db.collection("menus").doc(currentMenu.id);
+    themenu.update({
+        [day+'.'+meal_type]: firebase.firestore.FieldValue.arrayRemove(meal)
+    });
+
+
+    setCurrentMenu({...currentMenu});
   }
 
   const createMeal = ()=>{
@@ -110,13 +132,14 @@ function App() {
     changeMeal('');
   }
 
-  const filteredmeals = meal != '' ? 
+  let filteredmeals = meal != '' ? 
     meals.filter(m=>{
       let r = RegExp(meal,'i');
       return r.test(m.name);
     }) : 
     meals;
 
+  filteredmeals = filteredmeals.sort((a,b)=>(a.name < b.name ? -1 : 1));
 
   return (
     <div className="p-2 flex flex-col items-center">
@@ -129,7 +152,7 @@ function App() {
               {filteredmeals.map((meal,i) => (
                 <div key={i}><a href="" onClick={e=>addToDay(e,isAdding,meal)}>{meal.name}</a></div>
               ))}
-              <div><button>Crear nuevo plato</button></div>
+              <div><button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button></div>
             </form>
           </div>
         </div>
@@ -142,14 +165,25 @@ function App() {
             <h2 className="text-2xl underline">{day.day}</h2>
             <div className="flex justify-between">
               <div className="">
-                {currentMenu != null && currentMenu[day.key].map( (dish, j) => (
-                  <p key={j} className="pl-4">
-                    {dish.name}
-                  </p>
-                ))}
+                {currentMenu != null && Object.keys(currentMenu[day.key]).map( (meal_type, j) => {
+                  
+                  const meals = currentMenu[day.key][meal_type];
+
+                  return (
+                    <div>
+                      <h3>{meal_type}</h3>
+                      { meals.map ( meal => (
+                        <p key={meal.id} className="pl-4">
+                          {meal.name} <button onClick={()=>removeMeal(day.key,meal_type,meal)} className="text-white bg-red-400 rounded-full w-4 h-4 text-xs">X</button>
+                        </p>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
               <div>
-                <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600" onClick={()=>toggleadd(i)}>Añadir</button>
+                <button className="bg-blue-500 py-1 px-2 mx-1 rounded text-white hover:bg-blue-600" onClick={()=>toggleadd(i,'lunch')}>Almuerzo</button>
+                <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600" onClick={()=>toggleadd(i,'dinner')}>Cena</button>
               </div>
             </div>
           </div>
