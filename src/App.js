@@ -10,6 +10,8 @@ import {ReactComponent as Lunch} from './css/haw-weather.svg';
 import {ReactComponent as Dinner} from './css/meteorology.svg';
 
 import * as MenuPlanner from './components/MenuPlanner';
+import Home from './components/Home';
+import Meals from './components/Meals';
 import ViewMenus from './components/ViewMenus';
 
 // Initialize Cloud Firestore through Firebase
@@ -38,47 +40,7 @@ const lunch_time = [
 
 var db = firebase.firestore();
 
-function Home() {
 
-  var uiConfig = {
-    callbacks: {
-      signInSuccessWithAuthResult: function(authResult, redirectUrl) {
-        console.log('Logged',authResult);
-       
-        // User successfully signed in.
-        // Return type determines whether we continue the redirect automatically
-        // or whether we leave that to developer to handle.
-        return true;
-      },
-    },
-    'credentialHelper': firebaseui.auth.CredentialHelper.NONE,
-    // Will use popup for IDP Providers sign-in flow instead of the default, redirect.
-    signInFlow: 'popup',
-    signInOptions: [
-      // Leave the lines as is for the providers you want to offer your users.
-      //firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-      firebase.auth.EmailAuthProvider.PROVIDER_ID
-
-    ],
-    // Terms of service url.
-    // tosUrl: '<your-tos-url>',
-    // Privacy policy url.
-    // privacyPolicyUrl: '<your-privacy-policy-url>'
-  };
-
-
-  const login = () => {
-    var ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(firebase.auth());
-    ui.start('#firebaseui-auth-container', uiConfig);
-  }
-
-  return (
-    <div>
-      <h1>Menu Semanal: gestiona tu semana</h1>
-      <button onClick={login}>Entrar</button>
-      <div id="firebaseui-auth-container"></div>
-    </div>);
-}
 
 
 
@@ -116,7 +78,7 @@ function App() {
           setMeals(data);
         });
 
-        const start_date = getMonday("2020-08-01");
+        const start_date = getMonday();
         const key = `${uid}${formatDate(start_date)}`;
         
         let doc = db.collection("menus").doc(key).get().then(doc=>{
@@ -142,13 +104,12 @@ function App() {
               sunday:{},
             };
             db.collection("menus").doc(key).set(newmenu);
+
+            newmenu.start_date = {seconds:start_date.getTime()/1000};
             setCurrentMenu(newmenu);
           }
         });
-      } else {
-        // User is signed out.
-        // ...
-      }
+      } 
     });
   },[])
 
@@ -190,7 +151,7 @@ function App() {
 
   const createMeal = ()=>{
 
-    db.collection("meals").doc(currentUser).collection("meals").add({
+    db.collection("meals").doc(currentUser.uid+'111').collection("meals").add({
         name: meal,
     })
     .then(function(docRef) {
@@ -223,12 +184,15 @@ function App() {
 
   filteredmeals = filteredmeals.sort((a,b)=>(a.name < b.name ? -1 : 1));
 
+
+  //return <Meals />
+
   // if (isLogged)
   // return <ViewMenus db={db} uid={isLogged} />
   const currentUser = firebase.auth().currentUser;
   console.log('Current',currentUser);
 
-  if (currentUser == null) return <Home/>;
+  if (currentUser == null) return <Home firebase={firebase} firebaseui={firebaseui}/>;
 
   if (show_day !== false) {
 
@@ -309,7 +273,7 @@ function App() {
   
 
   return (
-    <div className="p-2 flex flex-col items-center bg-blue-100">
+    <div className="p-2 px-4 flex flex-col items-center bg-blue-100" style={{height:'100vh'}}>
       {/*isAdding !== false && (
         <div className="fixed inset-0 w-full items-center flex justify-center" style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
           <div className="bg-white w-3/4 p-2 rounded" style={{height: "75vh"}}>
@@ -329,7 +293,7 @@ function App() {
         const day_month = new Date(currentMenu.start_date.seconds*1000);
         const week_day = new Date(day_month.setDate(day_month.getDate()+parseInt(i))).getDate();
         return(
-          <div key={i} className="mb-2 flex flex-row w-3/4 bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" onClick={()=>viewDay(day.key,week_day)}>
+          <div key={i} className="mb-2 flex flex-row w-full bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" onClick={()=>viewDay(day.key,week_day)}>
 
             <div className="flex flex-col items-center justify-center w-12 py-2 ">
               <span className="text-xs">{day.day.substr(0,3)}</span>
