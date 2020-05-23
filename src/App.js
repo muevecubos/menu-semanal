@@ -2,6 +2,7 @@ import React,{useState,useEffect} from 'react';
 import {hot} from 'react-hot-loader';
 import * as firebase from "firebase/app";
 import "firebase/firestore";
+import * as firebaseui from 'firebaseui';
 
 import {getMonday,formatDate} from './menu_common';
 
@@ -9,7 +10,7 @@ import {ReactComponent as Lunch} from './css/haw-weather.svg';
 import {ReactComponent as Dinner} from './css/meteorology.svg';
 
 import * as MenuPlanner from './components/MenuPlanner';
-
+import ViewMenus from './components/ViewMenus';
 
 // Initialize Cloud Firestore through Firebase
 if (!firebase.apps.length) {
@@ -19,8 +20,6 @@ if (!firebase.apps.length) {
     projectId: process.env.REACT_APP_PROJECT_ID
   });
 }
-
-const uid = 'user';
 
 const week = [
   {day:'Lunes',key:'monday'},
@@ -39,6 +38,50 @@ const lunch_time = [
 
 var db = firebase.firestore();
 
+function Home() {
+
+  var uiConfig = {
+    callbacks: {
+      signInSuccessWithAuthResult: function(authResult, redirectUrl) {
+        console.log('Logged',authResult);
+       
+        // User successfully signed in.
+        // Return type determines whether we continue the redirect automatically
+        // or whether we leave that to developer to handle.
+        return true;
+      },
+    },
+    'credentialHelper': firebaseui.auth.CredentialHelper.NONE,
+    // Will use popup for IDP Providers sign-in flow instead of the default, redirect.
+    signInFlow: 'popup',
+    signInOptions: [
+      // Leave the lines as is for the providers you want to offer your users.
+      //firebase.auth.GoogleAuthProvider.PROVIDER_ID,
+      firebase.auth.EmailAuthProvider.PROVIDER_ID
+
+    ],
+    // Terms of service url.
+    // tosUrl: '<your-tos-url>',
+    // Privacy policy url.
+    // privacyPolicyUrl: '<your-privacy-policy-url>'
+  };
+
+
+  const login = () => {
+    var ui = firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(firebase.auth());
+    ui.start('#firebaseui-auth-container', uiConfig);
+  }
+
+  return (
+    <div>
+      <h1>Menu Semanal: gestiona tu semana</h1>
+      <button onClick={login}>Entrar</button>
+      <div id="firebaseui-auth-container"></div>
+    </div>);
+}
+
+
+
 function App() {
   const [isAdding,toggleAdding] = useState(false);
 
@@ -53,60 +96,72 @@ function App() {
 
   useEffect(()=>{
 
-    db.collection("meals").get().then((querySnapshot) => {
-      let data = querySnapshot.docs.map(doc=>{
-        let d = doc.data();
-        d.id = doc.id;
-        return d;
-      });
-      setMeals(data);
-    });
+    firebase.auth().onAuthStateChanged(function(user) {
+      if (user) {
+        // User is signed in.
+        var displayName = user.displayName;
+        var email = user.email;
+        var emailVerified = user.emailVerified;
+        var photoURL = user.photoURL;
+        var isAnonymous = user.isAnonymous;
+        var uid = user.uid;
+        var providerData = user.providerData;
+        
+        db.collection("meals").doc(uid).collection("meals").get().then((querySnapshot) => {
+          let data = querySnapshot.docs.map(doc=>{
+            let d = doc.data();
+            d.id = doc.id;
+            return d;
+          });
+          setMeals(data);
+        });
 
-    const key = `${uid}${formatDate(getMonday("2020-07-03"))}`;
+        const start_date = getMonday("2020-08-01");
+        const key = `${uid}${formatDate(start_date)}`;
+        
+        let doc = db.collection("menus").doc(key).get().then(doc=>{
+          if (doc.exists) {
+            let d = doc.data();
+            d.id = doc.id;
+            setCurrentMenu(d);
+          } else {
 
-   
-    let doc = db.collection("menus").doc(key).get().then(doc=>{
-
-      if (doc.exists) {
-        let d = doc.data();
-        d.id = doc.id;
-        setCurrentMenu(d);
+            let newmenu = {
+              date:new Date(),
+              start_date:start_date,
+              uid:uid,
+              meals:[],
+              lunch:[],
+              dinner:[],
+              monday:{},
+              tuesday:{},
+              wednesday:{},
+              thursday:{},
+              friday:{},
+              saturday:{},
+              sunday:{},
+            };
+            db.collection("menus").doc(key).set(newmenu);
+            setCurrentMenu(newmenu);
+          }
+        });
       } else {
-
-        let newmenu = {
-          date:new Date(),
-          meals:[],
-          lunch:[],
-          dinner:[],
-          monday:{},
-          tuesday:{},
-          wednesday:{},
-          thursday:{},
-          friday:{},
-          saturday:{},
-          sunday:{},
-        };
-        db.collection("menus").doc(key).set(newmenu);
-
-
-        setCurrentMenu(newmenu);
+        // User is signed out.
+        // ...
       }
     });
   },[])
-
 
   const toggleadd = (day_key,meal_type)=> {
     changeMeal('');
     setMealType(meal_type);
     toggleAdding(day_key);
-
   }
 
   const viewDay = (day,week_day)=>{
     setShowDay(day);
     setDayNumber(week_day);
   }
-
   
   const addToDay = (e,day_key,dish) => {
     if (e != undefined)e.preventDefault();
@@ -130,13 +185,12 @@ function App() {
         [day+'.'+meal_type]: firebase.firestore.FieldValue.arrayRemove(meal)
     });
 
-
     setCurrentMenu({...currentMenu});
   }
 
   const createMeal = ()=>{
 
-    db.collection("meals").add({
+    db.collection("meals").doc(currentUser).collection("meals").add({
         name: meal,
     })
     .then(function(docRef) {
@@ -146,7 +200,18 @@ function App() {
     .catch(function(error) {
         console.error("Error adding document: ", error);
     });
-    //changeMeal('');
+  }
+
+  const logout = () => {
+    firebase.auth().signOut().then(function() {
+      window.location.reload();
+    }).catch(function(error) {
+      // An error happened.
+    });
+  }
+
+  const goMenus = () => {
+
   }
 
   let filteredmeals = meal != '' ? 
@@ -158,6 +223,12 @@ function App() {
 
   filteredmeals = filteredmeals.sort((a,b)=>(a.name < b.name ? -1 : 1));
 
+  // if (isLogged)
+  // return <ViewMenus db={db} uid={isLogged} />
+  const currentUser = firebase.auth().currentUser;
+  console.log('Current',currentUser);
+
+  if (currentUser == null) return <Home/>;
 
   if (show_day !== false) {
 
@@ -176,8 +247,6 @@ function App() {
             {day_name.day}
           </div>
         </div>
-
-
 
         {isAdding !== false && (
           <div className="fixed inset-0 w-full items-end flex " style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
@@ -203,7 +272,7 @@ function App() {
         {currentMenu != null && lunch_time.map((lt,i)=>{
           const meals = day_showing[lt.key] || [];
           return (
-            <div className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
+            <div key={lt.key} className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
 
               <div className="flex justify-center cursor-pointer  rounded" onClick={()=>toggleadd(show_day,lt.key)}>
                 <div className="w-1/5">
@@ -241,7 +310,7 @@ function App() {
 
   return (
     <div className="p-2 flex flex-col items-center bg-blue-100">
-      {isAdding !== false && (
+      {/*isAdding !== false && (
         <div className="fixed inset-0 w-full items-center flex justify-center" style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
           <div className="bg-white w-3/4 p-2 rounded" style={{height: "75vh"}}>
             <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
@@ -254,10 +323,10 @@ function App() {
             </form>
           </div>
         </div>
-      )}
+      )*/}
 
       {currentMenu && week.map( (day,i) => {
-        const day_month = new Date(currentMenu.date.seconds*1000);
+        const day_month = new Date(currentMenu.start_date.seconds*1000);
         const week_day = new Date(day_month.setDate(day_month.getDate()+parseInt(i))).getDate();
         return(
           <div key={i} className="mb-2 flex flex-row w-3/4 bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" onClick={()=>viewDay(day.key,week_day)}>
@@ -275,9 +344,9 @@ function App() {
                   if (meals == undefined || meals.length==0) return null;
 
                   return (
-                    <div className="flex mb-2 flex-grow">
-                      {lt.key == 'lunch' && <Lunch className="w-6" />}
-                      {lt.key == 'dinner' && <Dinner className="w-6" />}
+                    <div key={lt.key} className="flex mb-2 flex-grow">
+                      {lt.key == 'lunch' && <Lunch className="w-6 h-6" />}
+                      {lt.key == 'dinner' && <Dinner className="w-6 h-6" />}
                       <div>
                       { meals.map ( meal => (
                         <p key={meal.id} className="pl-4">
@@ -295,6 +364,10 @@ function App() {
         )
 
       })}
+
+      <button className="" onClick={goMenus}>View Menus</button>
+      <button className="" onClick={logout}>Logout</button>
+
     </div>
   );
 }
