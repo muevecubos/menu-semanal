@@ -3,6 +3,15 @@ import {hot} from 'react-hot-loader';
 import * as firebase from "firebase/app";
 import "firebase/firestore";
 import * as firebaseui from 'firebaseui';
+import {CSSTransition} from 'react-transition-group';
+import {
+  BrowserRouter as Router,
+  Switch,
+  Route,
+  Link
+} from "react-router-dom";
+
+import './App.css';
 
 import {getMonday,formatDate} from './menu_common';
 
@@ -151,7 +160,7 @@ function App() {
 
   const createMeal = ()=>{
 
-    db.collection("meals").doc(currentUser.uid+'111').collection("meals").add({
+    db.collection("meals").doc(currentUser.uid).collection("meals").add({
         name: meal,
     })
     .then(function(docRef) {
@@ -163,16 +172,24 @@ function App() {
     });
   }
 
+  const deleteMeal = (id) => {
+    console.log( 'Eliminar')
+    db.collection("meals").doc(currentUser.uid).collection("meals").doc(id).delete().then(function() {
+        console.log("Document successfully deleted!");
+    }).catch(function(error) {
+        console.error("Error removing document: ", error);
+    });
+
+    setMeals(meals.filter(m=>m.id != id));
+
+  }
+
   const logout = () => {
     firebase.auth().signOut().then(function() {
       window.location.reload();
     }).catch(function(error) {
       // An error happened.
     });
-  }
-
-  const goMenus = () => {
-
   }
 
   let filteredmeals = meal != '' ? 
@@ -184,9 +201,6 @@ function App() {
 
   filteredmeals = filteredmeals.sort((a,b)=>(a.name < b.name ? -1 : 1));
 
-
-  //return <Meals />
-
   // if (isLogged)
   // return <ViewMenus db={db} uid={isLogged} />
   const currentUser = firebase.auth().currentUser;
@@ -196,143 +210,228 @@ function App() {
 
   if (show_day !== false) {
 
-    const day_showing = currentMenu[show_day];
-    const day_name = week.find(d=>d.key == show_day);
+    // const day_showing = currentMenu[show_day];
+    // const day_name = week.find(d=>d.key == show_day);
+
+    // return (
+      
+    //     <div className="bg-blue-100 w-full" style={{height:'100vh'}}>
+    //       <div className="flex flex-col w-3/4 mx-16 py-4 ">
+
+    //       <div className="flex border-b-4 border-gray-300 pb-2">
+    //         <div className="border border-black w-8 text-center font-bold text-xl" style={{borderTop:"5px solid red"}}>
+    //           {day_number}
+    //         </div>
+    //         <div className="text-2xl flex justify-center flex-grow">
+    //           {day_name.day}
+    //         </div>
+    //       </div>
+
+    //       {isAdding !== false && (
+    //         <div className="fixed inset-0 w-full items-end flex " style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
+    //           <div className="bg-blue-100 w-full p-2 " style={{height: "65vh"}}>
+    //             <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
+    //             <form className="flex flex-col items-center" onSubmit={e=>{e.preventDefault(); createMeal()}}> 
+    //               <input className="bg-white focus:outline-none focus:shadow-outline border border-gray-300 rounded-lg py-2 px-2 block w-3/4 appearance-none leading-normal"  autoComplete="off" onChange={(e)=>changeMeal(e.target.value)} placeholder="Escribe para filtrar o crear"/>
+    //               <div className="w-3/4 overflow-y-scroll" style={{height:"50vh"}}>
+    //               {filteredmeals.map((meal,i) => (
+    //                 <div key={i} className="border border-blue-500 bg-blue-200 p-2 m-1 cursor-pointer" onClick={()=>addToDay(undefined,isAdding,meal)}>
+    //                   {meal.name}
+    //                 </div>
+    //               ))}
+    //               </div>
+    //               <div className="flex justify-end">
+    //                 <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button>
+    //               </div>
+    //             </form>
+    //           </div>
+    //         </div>
+    //       )}
+
+    //       {currentMenu != null && lunch_time.map((lt,i)=>{
+    //         const meals = day_showing[lt.key] || [];
+    //         return (
+    //           <div key={lt.key} className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
+
+    //             <div className="flex justify-center cursor-pointer  rounded" onClick={()=>toggleadd(show_day,lt.key)}>
+    //               <div className="w-1/5">
+    //                 {lt.key == 'lunch' && <Lunch className="w-8" />}
+    //                 {lt.key == 'dinner' && <Dinner className="w-8" />}
+                    
+    //               </div>
+    //               <div className="flex flex-grow ml-4 text-2xl"> {lt.label}</div>
+    //             </div>
+
+    //             <div className="flex flex-col pl-8">
+    //             { meals.map ( meal => (
+    //               <p key={meal.id} className="pl-4">
+    //                 {meal.name} <button onClick={()=>removeMeal(day_name.key,lt.key,meal)} className="text-white bg-red-400 rounded-full w-4 h-4 text-xs">X</button>
+    //               </p>
+    //             ))}
+    //             </div>
+    //           </div>
+    //         );
+    //       })}
+    //         <div className="flex justify-end">
+    //           <button className="bg-blue-500 py-1 px-2 mx-1 rounded text-white hover:bg-blue-600" onClick={()=>setShowDay(false)}>Atrás</button>
+
+    //         </div>
+    //       </div> 
+    //     </div> 
+    //   )
+
+    }
+    
+    if (!currentMenu) return null;
+
+    const day_month = new Date(currentMenu.date.seconds*1000);
 
     return (
-      <div className="bg-blue-100 w-full" style={{height:'100vh'}}>
-        <div className="flex flex-col w-3/4 mx-16 py-4 ">
+      <Router>
+        <Switch>
 
-        <div className="flex border-b-4 border-gray-300 pb-2">
-          <div className="border border-black w-8 text-center font-bold text-xl" style={{borderTop:"5px solid red"}}>
-            {day_number}
-          </div>
-          <div className="text-2xl flex justify-center flex-grow">
-            {day_name.day}
-          </div>
-        </div>
+          <Route exact={true} path="/">
+            <div>
+              Hola
+              <br />
+              <Link to="/menu">Ver el menu de la semana</Link>
+              <Link to="/meals">Editar los platos</Link>
+            </div>
+          </Route>
 
-        {isAdding !== false && (
-          <div className="fixed inset-0 w-full items-end flex " style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
-            <div className="bg-blue-100 w-full p-2 " style={{height: "65vh"}}>
-              <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
-              <form className="flex flex-col items-center" onSubmit={e=>{e.preventDefault(); createMeal()}}> 
-                <input className="bg-white focus:outline-none focus:shadow-outline border border-gray-300 rounded-lg py-2 px-2 block w-3/4 appearance-none leading-normal"  autoComplete="off" onChange={(e)=>changeMeal(e.target.value)} placeholder="Escribe para filtrar o crear"/>
-                <div className="w-3/4 overflow-y-scroll" style={{height:"50vh"}}>
-                {filteredmeals.map((meal,i) => (
-                  <div key={i} className="border border-blue-500 bg-blue-200 p-2 m-1 cursor-pointer" onClick={()=>addToDay(undefined,isAdding,meal)}>
-                    {meal.name}
+          <Route exact={true} path="/meals">
+            <Meals meals={meals} mealDelete={deleteMeal} />
+          </Route>
+
+          <Route exact={true} path="/menu/:id/:day" render={(route) => {
+
+            const [day,day_number] = route.match.params.day.split('_'); 
+            const menu_id = route.match.params.id;
+            console.log('Route',route,day,day_number);
+
+            const day_showing = currentMenu[day];
+            const day_name = week.find(d=>d.key == day);
+
+            return (
+              
+              <div className="bg-blue-100 w-full" style={{height:'100vh'}}>
+                <div className="flex flex-col w-3/4 mx-16 py-4 ">
+
+                <div className="flex border-b-4 border-gray-300 pb-2">
+                  <div className="border border-black w-8 text-center font-bold text-xl" style={{borderTop:"5px solid red"}}>
+                    {day_number}
                   </div>
-                ))}
+                  <div className="text-2xl flex justify-center flex-grow">
+                    {day_name.day}
+                  </div>
                 </div>
-                <div className="flex justify-end">
-                  <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
-        {currentMenu != null && lunch_time.map((lt,i)=>{
-          const meals = day_showing[lt.key] || [];
-          return (
-            <div key={lt.key} className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
+                {isAdding !== false && (
+                  <div className="fixed inset-0 w-full items-end flex " style={{backgroundColor:'rgba(0,0,0,0.5)'}}></div>
+                )}
+                 
+                <CSSTransition in={(isAdding !== false)} timeout={1000} classNames="addMeal">
+                  <div className="absolute left-0 w-full items-end flex offscreen" >
+                   <div className="bg-blue-100 w-full p-2 " style={{height: "65vh"}}>
+                      <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
+                      <form className="flex flex-col items-center" onSubmit={e=>{e.preventDefault(); createMeal()}}> 
+                        <input className="bg-white focus:outline-none focus:shadow-outline border border-gray-300 rounded-lg py-2 px-2 block w-3/4 appearance-none leading-normal"  autoComplete="off" onChange={(e)=>changeMeal(e.target.value)} placeholder="Escribe para filtrar o crear"/>
+                        <div className="w-3/4 overflow-y-scroll" style={{height:"50vh"}}>
+                        {filteredmeals.map((meal,i) => (
+                          <div key={i} className="border border-blue-500 bg-blue-200 p-2 m-1 cursor-pointer" onClick={()=>addToDay(undefined,isAdding,meal)}>
+                            {meal.name}
+                          </div>
+                        ))}
+                        </div>
+                        <div className="flex justify-end">
+                          <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </CSSTransition>
 
-              <div className="flex justify-center cursor-pointer  rounded" onClick={()=>toggleadd(show_day,lt.key)}>
-                <div className="w-1/5">
-                  {lt.key == 'lunch' && <Lunch className="w-8" />}
-                  {lt.key == 'dinner' && <Dinner className="w-8" />}
-                  
-                </div>
-                <div className="flex flex-grow ml-4 text-2xl"> {lt.label}</div>
-              </div>
-
-              <div className="flex flex-col pl-8">
-              { meals.map ( meal => (
-                <p key={meal.id} className="pl-4">
-                  {meal.name} <button onClick={()=>removeMeal(day_name.key,lt.key,meal)} className="text-white bg-red-400 rounded-full w-4 h-4 text-xs">X</button>
-                </p>
-              ))}
-              </div>
-            </div>
-          );
-        })}
-          <div className="flex justify-end">
-            <button className="bg-blue-500 py-1 px-2 mx-1 rounded text-white hover:bg-blue-600" onClick={()=>setShowDay(false)}>Atrás</button>
-
-          </div>
-        </div> 
-      </div> 
-    )
-
-  }
-  
-  if (!currentMenu) return null;
-
-  const day_month = new Date(currentMenu.date.seconds*1000);
-  
-
-  return (
-    <div className="p-2 px-4 flex flex-col items-center bg-blue-100" style={{height:'100vh'}}>
-      {/*isAdding !== false && (
-        <div className="fixed inset-0 w-full items-center flex justify-center" style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
-          <div className="bg-white w-3/4 p-2 rounded" style={{height: "75vh"}}>
-            <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
-            <form onSubmit={e=>{e.preventDefault(); createMeal()}}> 
-              <input className="bg-white focus:outline-none focus:shadow-outline border border-gray-300 rounded-lg py-2 px-2 block w-3/4 appearance-none leading-normal"  autoComplete="off" onChange={(e)=>changeMeal(e.target.value)} placeholder="Escribe para filtrar o crear"/>
-              {filteredmeals.map((meal,i) => (
-                <div key={i}><a href="" onClick={e=>addToDay(e,isAdding,meal)}>{meal.name}</a></div>
-              ))}
-              <div><button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button></div>
-            </form>
-          </div>
-        </div>
-      )*/}
-
-      {currentMenu && week.map( (day,i) => {
-        const day_month = new Date(currentMenu.start_date.seconds*1000);
-        const week_day = new Date(day_month.setDate(day_month.getDate()+parseInt(i))).getDate();
-        return(
-          <div key={i} className="mb-2 flex flex-row w-full bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" onClick={()=>viewDay(day.key,week_day)}>
-
-            <div className="flex flex-col items-center justify-center w-12 py-2 ">
-              <span className="text-xs">{day.day.substr(0,3)}</span>
-              <MenuPlanner.CalendarDay day={week_day} />
-            </div>
-
-            <div className="flex items-center border-l-2 border-gray-300 flex-grow pl-2">
-              <div className="">
                 {currentMenu != null && lunch_time.map((lt,i)=>{
-                  const meals = currentMenu[day.key][lt.key];
-
-                  if (meals == undefined || meals.length==0) return null;
-
+                  const meals = day_showing[lt.key] || [];
                   return (
-                    <div key={lt.key} className="flex mb-2 flex-grow">
-                      {lt.key == 'lunch' && <Lunch className="w-6 h-6" />}
-                      {lt.key == 'dinner' && <Dinner className="w-6 h-6" />}
-                      <div>
+                    <div key={lt.key} className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
+
+                      <div className="flex justify-center cursor-pointer  rounded" onClick={()=>toggleadd(day,lt.key)}>
+                        <div className="w-1/5">
+                          {lt.key == 'lunch' && <Lunch className="w-8" />}
+                          {lt.key == 'dinner' && <Dinner className="w-8" />}
+                          
+                        </div>
+                        <div className="flex flex-grow ml-4 text-2xl"> {lt.label}</div>
+                      </div>
+
+                      <div className="flex flex-col pl-8">
                       { meals.map ( meal => (
                         <p key={meal.id} className="pl-4">
-                          {meal.name}
+                          {meal.name} <button onClick={()=>removeMeal(day_name.key,lt.key,meal)} className="text-white bg-red-400 rounded-full w-4 h-4 text-xs">X</button>
                         </p>
                       ))}
                       </div>
                     </div>
                   );
-
                 })}
-              </div>
-            </div>
+                  <div className="flex justify-end">
+                    <Link to={`/menu/${menu_id}`} className="bg-blue-500 py-1 px-2 mx-1 rounded text-white hover:bg-blue-600" >Atrás</Link>
+
+                  </div>
+                </div> 
+              </div> 
+            )
+            
+          }} 
+          />
+
+          <Route path="/menu">
+            <div className="p-2 px-4 flex flex-col items-center bg-blue-100" style={{height:'100vh'}}>
+              {currentMenu && week.map( (day,i) => {
+                const day_month = new Date(currentMenu.start_date.seconds*1000);
+                const week_day = new Date(day_month.setDate(day_month.getDate()+parseInt(i))).getDate();
+                return(
+                  <Link key={i} to={`/menu/${currentMenu.id}/${day.key}_${week_day}`} className="mb-2 flex flex-row w-full bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" >
+
+                    <div className="flex flex-col items-center justify-center w-12 py-2 ">
+                      <span className="text-xs">{day.day.substr(0,3)}</span>
+                      <MenuPlanner.CalendarDay day={week_day} />
+                    </div>
+
+                    <div className="flex items-center border-l-2 border-gray-300 flex-grow pl-2">
+                      <div className="">
+                        {currentMenu != null && lunch_time.map((lt,i)=>{
+                          const meals = currentMenu[day.key][lt.key];
+
+                          if (meals == undefined || meals.length==0) return null;
+
+                          return (
+                            <div key={lt.key} className="flex mb-2 flex-grow">
+                              {lt.key == 'lunch' && <Lunch className="w-6 h-6" />}
+                              {lt.key == 'dinner' && <Dinner className="w-6 h-6" />}
+                              <div>
+                              { meals.map ( meal => (
+                                <p key={meal.id} className="pl-4">
+                                  {meal.name}
+                                </p>
+                              ))}
+                              </div>
+                            </div>
+                          );
+
+                        })}
+                      </div>
+                    </div>
+                  </Link>
+                )
+              })}
+            <Link to="/">Inicio</Link>
+            <button className="" onClick={logout}>Logout</button>
           </div>
-        )
-
-      })}
-
-      <button className="" onClick={goMenus}>View Menus</button>
-      <button className="" onClick={logout}>Logout</button>
-
-    </div>
+        </Route>
+      </Switch>
+    </Router>
   );
 }
 
