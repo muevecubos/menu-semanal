@@ -18,6 +18,8 @@ import {getMonday,formatDate} from './menu_common';
 import {ReactComponent as Lunch} from './css/haw-weather.svg';
 import {ReactComponent as Dinner} from './css/meteorology.svg';
 
+import {generateMenu} from './api';
+
 import * as MenuPlanner from './components/MenuPlanner';
 import Home from './components/Home';
 import Meals from './components/Meals';
@@ -50,14 +52,11 @@ const lunch_time = [
 var db = firebase.firestore();
 
 
-
-
-
 function App() {
   const [isAdding,toggleAdding] = useState(false);
 
   const [currentMenu,setCurrentMenu] = useState(null);
-
+  const [indexedMenus,setIndexedMenus] = useState({});
   const [meals,setMeals] = useState([])
 
   const [meal,changeMeal] = useState('');
@@ -132,6 +131,15 @@ function App() {
     setShowDay(day);
     setDayNumber(week_day);
   }
+
+  const createMenu = () => {
+    const date = document.getElementById('date').value;
+    generateMenu(db,currentUser.uid,date,meals,(key)=>{
+      //window.location.href=`/menu/${key}`;
+    });
+    
+  }
+
   
   const addToDay = (e,day_key,dish) => {
     if (e != undefined)e.preventDefault();
@@ -210,75 +218,7 @@ function App() {
 
   if (show_day !== false) {
 
-    // const day_showing = currentMenu[show_day];
-    // const day_name = week.find(d=>d.key == show_day);
-
-    // return (
-      
-    //     <div className="bg-blue-100 w-full" style={{height:'100vh'}}>
-    //       <div className="flex flex-col w-3/4 mx-16 py-4 ">
-
-    //       <div className="flex border-b-4 border-gray-300 pb-2">
-    //         <div className="border border-black w-8 text-center font-bold text-xl" style={{borderTop:"5px solid red"}}>
-    //           {day_number}
-    //         </div>
-    //         <div className="text-2xl flex justify-center flex-grow">
-    //           {day_name.day}
-    //         </div>
-    //       </div>
-
-    //       {isAdding !== false && (
-    //         <div className="fixed inset-0 w-full items-end flex " style={{backgroundColor:'rgba(0,0,0,0.5)'}}>
-    //           <div className="bg-blue-100 w-full p-2 " style={{height: "65vh"}}>
-    //             <button className="float-right bg-red-600 text-white font-bold p-1 rounded" onClick={()=>toggleadd(false)}>X</button>
-    //             <form className="flex flex-col items-center" onSubmit={e=>{e.preventDefault(); createMeal()}}> 
-    //               <input className="bg-white focus:outline-none focus:shadow-outline border border-gray-300 rounded-lg py-2 px-2 block w-3/4 appearance-none leading-normal"  autoComplete="off" onChange={(e)=>changeMeal(e.target.value)} placeholder="Escribe para filtrar o crear"/>
-    //               <div className="w-3/4 overflow-y-scroll" style={{height:"50vh"}}>
-    //               {filteredmeals.map((meal,i) => (
-    //                 <div key={i} className="border border-blue-500 bg-blue-200 p-2 m-1 cursor-pointer" onClick={()=>addToDay(undefined,isAdding,meal)}>
-    //                   {meal.name}
-    //                 </div>
-    //               ))}
-    //               </div>
-    //               <div className="flex justify-end">
-    //                 <button className="bg-blue-500 py-1 px-2 rounded text-white hover:bg-blue-600">Crear nuevo plato</button>
-    //               </div>
-    //             </form>
-    //           </div>
-    //         </div>
-    //       )}
-
-    //       {currentMenu != null && lunch_time.map((lt,i)=>{
-    //         const meals = day_showing[lt.key] || [];
-    //         return (
-    //           <div key={lt.key} className="border-2 border-blue-500 bg-blue-300 rounded p-2 mb-2 shadow-xl">
-
-    //             <div className="flex justify-center cursor-pointer  rounded" onClick={()=>toggleadd(show_day,lt.key)}>
-    //               <div className="w-1/5">
-    //                 {lt.key == 'lunch' && <Lunch className="w-8" />}
-    //                 {lt.key == 'dinner' && <Dinner className="w-8" />}
-                    
-    //               </div>
-    //               <div className="flex flex-grow ml-4 text-2xl"> {lt.label}</div>
-    //             </div>
-
-    //             <div className="flex flex-col pl-8">
-    //             { meals.map ( meal => (
-    //               <p key={meal.id} className="pl-4">
-    //                 {meal.name} <button onClick={()=>removeMeal(day_name.key,lt.key,meal)} className="text-white bg-red-400 rounded-full w-4 h-4 text-xs">X</button>
-    //               </p>
-    //             ))}
-    //             </div>
-    //           </div>
-    //         );
-    //       })}
-    //         <div className="flex justify-end">
-    //           <button className="bg-blue-500 py-1 px-2 mx-1 rounded text-white hover:bg-blue-600" onClick={()=>setShowDay(false)}>Atrás</button>
-
-    //         </div>
-    //       </div> 
-    //     </div> 
-    //   )
+    
 
     }
     
@@ -294,13 +234,20 @@ function App() {
             <div>
               Hola
               <br />
-              <Link to="/menu">Ver el menu de la semana</Link>
-              <Link to="/meals">Editar los platos</Link>
+              <Link className="bg-blue-500 px-2 py-1 rounded m-2" to="/menu">Ver el menu de la semana</Link>
+              <Link className="bg-blue-500 px-2 py-1 rounded m-2" to="/meals">Editar los platos</Link>
+              <Link className="bg-blue-500 px-2 py-1 rounded m-2" to="/menus">Ver todos los menus</Link>
+              <input type="date" className="border border-black" id="date" />
+              <button onClick={createMenu} >Crear menu</button>
             </div>
           </Route>
 
           <Route exact={true} path="/meals">
             <Meals meals={meals} mealDelete={deleteMeal} />
+          </Route>
+
+          <Route exact={true} path="/menus">
+            <ViewMenus uid={currentUser.uid} db={db} />
           </Route>
 
           <Route exact={true} path="/menu/:id/:day" render={(route) => {
@@ -315,7 +262,7 @@ function App() {
             return (
               
               <div className="bg-blue-100 w-full" style={{height:'100vh'}}>
-                <div className="flex flex-col w-3/4 mx-16 py-4 ">
+                <div className="flex flex-col mx-16 py-4 ">
 
                 <div className="flex border-b-4 border-gray-300 pb-2">
                   <div className="border border-black w-8 text-center font-bold text-xl" style={{borderTop:"5px solid red"}}>
@@ -386,13 +333,36 @@ function App() {
           }} 
           />
 
-          <Route path="/menu">
+          <Route exact={true} path="/menu/:id?" render={(route) => {
+            const menu_id = route.match.params.id;
+            let menu;
+            if (menu_id != undefined) {
+
+              if (indexedMenus[menu_id] == undefined) { 
+                let doc = db.collection("menus").doc(menu_id).get().then(doc=>{
+                  if (doc.exists) {
+                    let d = doc.data();
+                    d.id = doc.id;
+                    menu = d;
+                    setIndexedMenus({...indexedMenus,[menu_id]:menu});
+                  } 
+                });
+              }
+              menu = indexedMenus[menu_id];
+
+            }
+            else {
+              menu = currentMenu;
+            }
+
+
+            return (
             <div className="p-2 px-4 flex flex-col items-center bg-blue-100" style={{height:'100vh'}}>
-              {currentMenu && week.map( (day,i) => {
-                const day_month = new Date(currentMenu.start_date.seconds*1000);
+              {menu && week.map( (day,i) => {
+                const day_month = new Date(menu.start_date.seconds*1000);
                 const week_day = new Date(day_month.setDate(day_month.getDate()+parseInt(i))).getDate();
                 return(
-                  <Link key={i} to={`/menu/${currentMenu.id}/${day.key}_${week_day}`} className="mb-2 flex flex-row w-full bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" >
+                  <Link key={i} to={`/menu/${menu.id}/${day.key}_${week_day}`} className="mb-2 flex flex-row w-full bg-blue-300 rounded shadow-xl border-2 border-blue-500 cursor-pointer" >
 
                     <div className="flex flex-col items-center justify-center w-12 py-2 ">
                       <span className="text-xs">{day.day.substr(0,3)}</span>
@@ -401,8 +371,8 @@ function App() {
 
                     <div className="flex items-center border-l-2 border-gray-300 flex-grow pl-2">
                       <div className="">
-                        {currentMenu != null && lunch_time.map((lt,i)=>{
-                          const meals = currentMenu[day.key][lt.key];
+                        {menu != null && lunch_time.map((lt,i)=>{
+                          const meals = menu[day.key][lt.key];
 
                           if (meals == undefined || meals.length==0) return null;
 
@@ -429,7 +399,9 @@ function App() {
             <Link to="/">Inicio</Link>
             <button className="" onClick={logout}>Logout</button>
           </div>
-        </Route>
+          )
+        }} 
+          />
       </Switch>
     </Router>
   );

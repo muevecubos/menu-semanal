@@ -1,21 +1,30 @@
 .offscreen {
   top:100%;
+  display:none;
 }
 .addMeal-enter {
   top:100%;
+  display: block;
 }
 .addMeal-enter-active{
   top: 50%;
   transition: top 500ms;
+  display: block;
 }
 
 .addMeal-enter-done {
   top:50%;
+  display: block;
 }
 .addMeal-exit {
   top: 50%;
+  display: block;
 }
 .addMeal-exit-active {
   top:100%;
   transition: top 500ms ease;
+}
+
+.addMeal-exit-done {
+  display: none;
 }
